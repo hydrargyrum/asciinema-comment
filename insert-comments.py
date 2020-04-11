@@ -78,6 +78,36 @@ def inserts_to_records(fd, y, width):
             yield data, line
 
 
+def parse_srt_time(strtime):
+    m = list(map(int, re.search(r'(\d+):(\d+):(\d+),(\d+)', strtime).groups()))
+    return m[0] * 3600 + m[1] * 60 + m[2] + m[3] / 1000
+
+
+def srt_to_records(fd, y, width):
+    while True:
+        if not fd.readline():  # EOF
+            break
+        timestamps = fd.readline()
+
+        message = ''
+        for line in fd:
+            if not line.strip():
+                break
+            message += line.strip()
+
+        start, end = map(parse_srt_time, timestamps.split(' --> '))
+
+        records = []
+        padded = pad_message(message, '^', width)
+        records.append([start, 'o', f"\u001b[s\u001b[{y};1H{padded}\u001b[u"])
+        padded = pad_message('', '^', width)
+        records.append([end, 'o', f"\u001b[s\u001b[{y};1H{padded}\u001b[u"])
+
+        for data in records:
+            line = json.dumps(data) + '\n'
+            yield data, line
+
+
 def rec_to_records(fd):
     for line in fd:
         data = json.loads(line)
@@ -103,9 +133,11 @@ with args.rec_file, args.inserts_file:
         else:
             y = data['height']
 
-        it = merge_iterables(
-            rec_to_records(args.rec_file),
-            inserts_to_records(args.inserts_file, y, data['width']),
-        )
+        if args.inserts_file.name.endswith('.srt'):
+            subtitles_it = srt_to_records(args.inserts_file, y, data['width'])
+        else:
+            subtitles_it = inserts_to_records(args.inserts_file, y, data['width'])
+
+        it = merge_iterables(rec_to_records(args.rec_file), subtitles_it)
         for data, line in it:
             args.output.write(line)

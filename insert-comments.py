@@ -71,7 +71,7 @@ def inserts_to_records(fd, y, width):
         records.append([start, 'o', f"\u001b[s\u001b[{y};1H{rev_start}{padded}{rev_end}\u001b[u"])
         if end:
             padded = pad_message('', '^', width)
-            records.append([end, 'o', f"\u001b[s\u001b[{y};1H{rev_start}{padded}{rev_end}\u001b[u"])
+            records.append([end, 'o', f"\u001b[s\u001b[{y};1H{padded}\u001b[u"])
 
         for data in records:
             line = json.dumps(data) + '\n'
